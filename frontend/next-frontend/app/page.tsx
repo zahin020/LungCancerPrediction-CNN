@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion} from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,8 +20,8 @@ export default function HomePage() {
   const researchRef = useRef<HTMLDivElement>(null)
   const contactRef = useRef<HTMLDivElement>(null)
 
-  const { scrollYProgress } = useScroll()
-  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [0, 1, 0])
+  // const { scrollYProgress } = useScroll()
+  // const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [0, 1, 0])
 
   const handleSignIn = () => {
     setIsLoading(true)
@@ -380,8 +380,8 @@ export default function HomePage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               viewport={{ once: true }}
             >
-              We're here to answer any questions you may have about CancerCare. Please fill out the form below, and
-              we'll get back to you as soon as possible.
+              We are here to answer any questions you may have about CancerCare. Please fill out the form below, and
+              we will get back to you as soon as possible.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 50 }}
