@@ -96,27 +96,26 @@ export default function PatientDashboardPage() {
           </motion.h2>
           <motion.div {...fadeIn} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DashboardCard
-              title="Medical Profile"
+              title="Lung Cancer Prediction"
               icon={UserCircle}
               items={[
-                { icon: FileText, text: "Personal Information" },
+                { icon: FileText, text: "Implement Artificial Intelligence" },
                 { icon: Activity, text: "Medical History" },
                 { icon: MessageSquare, text: "Risk Analysis" },
-                { icon: Calendar, text: "Allergies and Conditions" },
+                
               ]}
-              buttonText="Access Medical Profile"
+              buttonText="Access Risk Analysis"
               onClick={() => router.push('/medical-profile')}
             />
             <DashboardCard
-              title="Progress Tracking"
+              title="Health Advice"
               icon={LineChart}
               items={[
                 { icon: Activity, text: "Healthcare Tips" },
-                { icon: LineChart, text: "Treatment Progress" },
                 { icon: Calendar, text: "Appointment Schedule" },
                 { icon: FileText, text: "Lung Cancer Symptoms" },
               ]}
-              buttonText="View Progress Tracking"
+              buttonText="View Health Advice"
               onClick={() => router.push('/progress-tracking')}
             />
           </motion.div>
