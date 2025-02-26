@@ -1,59 +1,99 @@
-'use client';
+"use client"
 
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, AlertCircle, FileImage, Loader2, ArrowLeft } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { Progress } from "@/components/ui/progress";
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import type React from "react"
+import { useState, useEffect } from "react"
+import axios from "axios"
+import { motion, AnimatePresence } from "framer-motion"
+import { Upload, AlertCircle, FileImage, Loader2, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
+import { Progress } from "@/components/ui/progress"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { initializeApp } from "firebase/app"
+import { getDatabase, ref, update } from "firebase/database"
+
+// Firebase configuration (replace with your actual config)
+const firebaseConfig = {
+  apiKey: "AIzaSyABd0P58Guvh0GyY08BuWnccZPnzxHerdw",
+  authDomain: "onchologychain-ff1d9.firebaseapp.com",
+  databaseURL: "https://onchologychain-ff1d9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "onchologychain-ff1d9",
+  storageBucket: "onchologychain-ff1d9.appspot.com",
+  messagingSenderId: "249856462590",
+  appId: "1:249856462590:web:9ce5383e04768ac38d9faf",
+}
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
+const database = getDatabase(app)
 
 const UploadForm = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [result, setResult] = useState<{ prediction: string, probability: number } | null>(null);
-  const { toast } = useToast();
-  const router = useRouter();
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [result, setResult] = useState<{ prediction: string; probability: number } | null>(null)
+  const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     const handleResize = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty("--vh", `${vh}px`)
+    }
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
+    handleResize()
+    window.addEventListener("resize", handleResize)
 
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
+    const selectedFile = event.target.files?.[0]
     if (selectedFile) {
-      if (selectedFile.type.startsWith('image/')) {
-        setFile(selectedFile);
-        const reader = new FileReader();
+      if (selectedFile.type.startsWith("image/")) {
+        setFile(selectedFile)
+        const reader = new FileReader()
         reader.onloadend = () => {
-          setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(selectedFile);
+          setPreview(reader.result as string)
+        }
+        reader.readAsDataURL(selectedFile)
       } else {
         toast({
           title: "Invalid file type",
           description: "Please select an image file.",
           variant: "destructive",
-        });
+        })
       }
     }
-  };
+  }
+
+  // Save prediction result to Firebase (overwrite existing prediction)
+const savePredictionToFirebase = async (address: string, prediction: string) => {
+  try {
+    const patientRef = ref(database, `patients/${address}/prediction`) // Directly target the 'prediction' field
+    await update(patientRef, {
+      prediction, // Update only the prediction field
+      timestamp: new Date().toISOString(), // Update timestamp
+    })
+    toast({
+      title: "Prediction saved",
+      description: `The result has been updated successfully for patient ${address}.`,
+    })
+  } catch (error) {
+    toast({
+      title: "Error saving prediction",
+      description: "There was an error updating the prediction in Firebase.",
+      variant: "destructive",
+    })
+    console.error("Error saving prediction to Firebase:", error)
+  }
+}
 
   const handleUpload = async () => {
     if (!file) {
@@ -61,52 +101,57 @@ const UploadForm = () => {
         title: "No file selected",
         description: "Please select a lung image before uploading.",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    setResult(null);
+    setIsUploading(true)
+    setUploadProgress(0)
+    setResult(null)
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const formData = new FormData()
+    formData.append("file", file)
 
     try {
       // Dynamically determine the host (localhost or IP) of the frontend
-      const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  
+      const host = typeof window !== "undefined" ? window.location.hostname : "localhost"
+
       // Construct the backend API URL using the dynamically detected host
-      const apiUrl = `http://${host}:5000/upload`;
-  
+      const apiUrl = `http://${host}:5000/upload`
+
       const response = await axios.post(apiUrl, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1));
-          setUploadProgress(percentCompleted);
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))
+          setUploadProgress(percentCompleted)
         },
-      });
+      })
 
-      const { prediction, probability } = response.data;
-      setResult({ prediction, probability });
+      const { prediction, probability } = response.data
+      setResult({ prediction, probability })
+
+      // Simulate patient address (replace with real value)
+      const patientAddress = "0x2494d53Db3fB476Ffc53b6876DAD2bc881f2895c"
+      await savePredictionToFirebase(patientAddress, prediction)
+
       toast({
         title: "Analysis complete",
         description: "Your lung image has been successfully analyzed.",
         variant: "default",
-      });
+      })
     } catch {
       toast({
         title: "Analysis failed",
         description: "There was an error processing your lung image. Please try again or contact support.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
+      setIsUploading(false)
+      setUploadProgress(0)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-black to-purple-900 text-white flex flex-col">
@@ -116,25 +161,25 @@ const UploadForm = () => {
         <motion.div
           className="absolute inset-0"
           animate={{
-            backgroundPosition: ['0% 0%', '100% 100%'],
+            backgroundPosition: ["0% 0%", "100% 100%"],
             scale: [1, 1.1, 1],
           }}
           transition={{
             duration: 20,
             ease: "linear",
-            repeat: Infinity,
+            repeat: Number.POSITIVE_INFINITY,
             repeatType: "reverse",
           }}
           style={{
             backgroundImage: 'url("/lung-cells-bg.svg")',
-            backgroundSize: '200% 200%',
+            backgroundSize: "200% 200%",
           }}
         />
       </div>
 
       <header className="bg-black/60 backdrop-blur-md shadow-lg py-4 px-6 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <motion.h1 
+          <motion.h1
             className="text-2xl font-bold text-blue-400"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -146,14 +191,22 @@ const UploadForm = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
+            className="flex space-x-4"
           >
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="text-blue-300 hover:text-blue-200 hover:bg-blue-800/50"
-              onClick={() => router.push('/role-selection')}
+              onClick={() => router.push("/role-selection")}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Role Selection
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-blue-300 hover:text-blue-200 hover:bg-blue-800/50"
+              onClick={() => (window.location.href = "http://192.168.229.1:3000")} // connect to oncologychain
+            >
+              Oncologychain
             </Button>
           </motion.div>
         </div>
@@ -169,13 +222,15 @@ const UploadForm = () => {
           <Card className="bg-blue-900/30 backdrop-blur-md border-blue-400/50 overflow-hidden">
             <CardContent className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
-                <motion.div 
+                <motion.div
                   className="space-y-2"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <Label htmlFor="image-upload" className="text-lg font-semibold text-blue-300">Select Lung Image</Label>
+                  <Label htmlFor="image-upload" className="text-lg font-semibold text-blue-300">
+                    Select Lung Image
+                  </Label>
                   <div className="flex items-center space-x-4">
                     <Input
                       id="image-upload"
@@ -185,7 +240,7 @@ const UploadForm = () => {
                       className="hidden"
                     />
                     <Button
-                      onClick={() => document.getElementById('image-upload')?.click()}
+                      onClick={() => document.getElementById("image-upload")?.click()}
                       variant="outline"
                       className="w-full py-8 text-lg font-semibold text-blue-300 border-2 border-blue-400/50 hover:bg-blue-800/50 transition-colors duration-300"
                     >
@@ -193,18 +248,12 @@ const UploadForm = () => {
                       Choose File
                     </Button>
                   </div>
-                  {file && (
-                    <p className="text-sm text-blue-300 font-medium mt-2">
-                      Selected file: {file.name}
-                    </p>
-                  )}
-                  <p className="text-sm text-blue-300">
-                    Accepted formats: JPEG, PNG, DICOM (for CT scans)
-                  </p>
+                  {file && <p className="text-sm text-blue-300 font-medium mt-2">Selected file: {file.name}</p>}
+                  <p className="text-sm text-blue-300">Accepted formats: JPEG, PNG, DICOM (for CT scans)</p>
                 </motion.div>
                 <AnimatePresence>
                   {preview ? (
-                    <motion.div 
+                    <motion.div
                       className="space-y-2"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -222,7 +271,7 @@ const UploadForm = () => {
                       </div>
                     </motion.div>
                   ) : (
-                    <motion.div 
+                    <motion.div
                       className="flex items-center justify-center w-full h-64 border-2 border-blue-400/50 border-dashed rounded-lg bg-blue-900/30"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -238,11 +287,7 @@ const UploadForm = () => {
                 </AnimatePresence>
               </div>
               <div className="space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <Button
                     onClick={handleUpload}
                     disabled={!file || isUploading}
@@ -263,7 +308,7 @@ const UploadForm = () => {
                 </motion.div>
                 <AnimatePresence>
                   {isUploading && (
-                    <motion.div 
+                    <motion.div
                       className="w-full space-y-2"
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -271,9 +316,7 @@ const UploadForm = () => {
                       transition={{ duration: 0.3 }}
                     >
                       <Progress value={uploadProgress} className="w-full h-2" />
-                      <p className="text-center text-sm text-blue-300">
-                        {uploadProgress}% complete
-                      </p>
+                      <p className="text-center text-sm text-blue-300">{uploadProgress}% complete</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -285,22 +328,26 @@ const UploadForm = () => {
                       exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <Alert className={`${
-                        result.prediction.toLowerCase().includes('malignant') 
-                          ? 'bg-red-900/50 border-red-400/50 text-red-100' 
-                          : 'bg-green-900/50 border-green-400/50 text-green-100'
-                      }`}>
-                        <AlertCircle className={`h-5 w-5 ${
-                          result.prediction.toLowerCase().includes('malignant')
-                            ? 'text-red-300'
-                            : 'text-green-300'
-                        }`} />
-                        <AlertTitle className="text-lg font-semibold mb-2">
-                          Analysis Result
-                        </AlertTitle>
+                      <Alert
+                        className={`${
+                          result.prediction.toLowerCase().includes("malignant")
+                            ? "bg-red-900/50 border-red-400/50 text-red-100"
+                            : "bg-green-900/50 border-green-400/50 text-green-100"
+                        }`}
+                      >
+                        <AlertCircle
+                          className={`h-5 w-5 ${
+                            result.prediction.toLowerCase().includes("malignant") ? "text-red-300" : "text-green-300"
+                          }`}
+                        />
+                        <AlertTitle className="text-lg font-semibold mb-2">Analysis Result</AlertTitle>
                         <AlertDescription>
-                          <p><strong>Prediction:</strong> {result.prediction}</p>
-                          <p><strong>Probability:</strong> {(result.probability * 100).toFixed(2)}%</p>
+                          <p>
+                            <strong>Prediction:</strong> {result.prediction}
+                          </p>
+                          <p>
+                            <strong>Probability:</strong> {(result.probability * 100).toFixed(2)}%
+                          </p>
                         </AlertDescription>
                       </Alert>
                     </motion.div>
@@ -313,7 +360,7 @@ const UploadForm = () => {
       </main>
 
       <footer className="bg-black/60 backdrop-blur-md shadow-lg mt-auto py-4 px-6 relative z-10">
-        <motion.div 
+        <motion.div
           className="max-w-7xl mx-auto text-center text-blue-300"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -323,8 +370,8 @@ const UploadForm = () => {
         </motion.div>
       </footer>
     </div>
-  );
-};
+  )
+}
 
-export default UploadForm;
+export default UploadForm
 
